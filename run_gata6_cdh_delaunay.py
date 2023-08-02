@@ -7,5 +7,12 @@ if __name__ == '__main__':
     conc = float(sys.argv[3])
     cdh1_ratio = float(sys.argv[4])
     cdh6_ratio = float(sys.argv[5])
-    a = parameter_sweep_abm(0, "/Users/andrew/PycharmProjects/ST_CHO_adhesion_model/", induction1, induction2, conc,
+
+    if sys.platform == 'win32':
+        outputs = "C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs"
+    elif sys.platform == 'darwin':
+        outputs = "/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs", model_params
+    else:
+        print('exiting...')
+    a = parameter_sweep_abm(0, outputs, induction1, induction2, conc,
                             cdh1_ratio, cdh6_ratio, final_ts=120)

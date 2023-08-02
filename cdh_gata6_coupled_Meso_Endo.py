@@ -5,6 +5,7 @@ import backend
 import cv2
 import gata6_model_MesoEndo_V2 as RD
 import datetime
+import sys
 
 @jit(nopython=True, parallel=True)
 def get_neighbor_forces(number_edges, edges, edge_forces, locations, center, types, radius, r_e=1.01,
@@ -563,7 +564,7 @@ def parameter_sweep_abm(par, directory, dox_induction_step, induction_value, fin
     }
     name = f'{datetime.date.today()}_MESO_ENDO_{induction_value}dox_at_{dox_induction_step}'
     sim = GATA6_Adhesion_Coupled_Simulation(model_params)
-    sim.start_sweep(directory + '/outputs', model_params, name)
+    sim.start_sweep(directory, model_params, name)
     return par, sim.image_quality, sim.image_quality, 3, final_ts/sim.sub_ts
 
 
@@ -577,4 +578,9 @@ if __name__ == "__main__":
         "PACE": False
     }
     sim = GATA6_Adhesion_Coupled_Simulation(model_params)
-    sim.start("/Users/andrew/PycharmProjects/ST_CHO_adhesion_model/outputs/", model_params)
+    if sys.platform == 'win32':
+        sim.start("C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs")
+    elif sys.platform == 'darwin':
+        sim.start("/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs", model_params)
+    else:
+        print('exiting...')

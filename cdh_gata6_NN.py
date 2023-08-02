@@ -4,6 +4,7 @@ from simulation import Simulation, record_time
 import backend
 import cv2
 import gata6_model_EP as EP1
+import sys
 
 def get_neighbor_forces(edge_forces, num_agents, cell_types, locations, radii, center, attraction_threshold, r_e=1.01,
                         u_bb=5, u_rb=1, u_yb=1, u_rr=20, u_ry=12, u_yy=30, u_rep=10000, grav=2, well_rad=325):
@@ -512,22 +513,25 @@ def parameter_sweep_abm(par, directory, dox_induction_step, cdh_induction_step, 
         "PACE": False
     }
     name = f'{induction_value}dox_at_{dox_induction_step}_cdh_at_{cdh_induction_step}dox{dox_ratio}_aba{aba_ratio}_Delaunay'
-    sim = GATA6_Adhesion_Simulation_Delaunay(model_params)
-    sim.start_sweep(directory + '/outputs', model_params, name)
+    sim = GATA6_Adhesion_Simulation_NN(model_params)
+    sim.start_sweep(directory, model_params, name)
     return par, sim.image_quality, sim.image_quality, 3, final_ts/sim.sub_ts
 
 if __name__ == "__main__":
-    a = parameter_sweep_abm(0, "/Users/andrew/PycharmProjects/ST_CHO_adhesion_model/", 12, 12, 0.5, 0.5, 0.2, final_ts=120)
-    print(a)
-    # model_params = {
-    #     "cdh_induction_step": 12,
-    #     "dox_induction_step": 12,
-    #     "induction_value": 0.5,
-    #     "gata6_threshold": 6,
-    #     "end_step": 120,
-    #     "inducer3_ratio": 0.5,
-    #     "aba_ratio": 0.2,
-    #     "PACE": False
-    # }
-    # sim = GATA6_Adhesion_Simulation_Delaunay(model_params)
-    # sim.start("/Users/andrew/PycharmProjects/ST_CHO_adhesion_model/outputs/", model_params)
+    model_params = {
+        "cdh_induction_step": 12,
+        "dox_induction_step": 12,
+        "induction_value": 0.5,
+        "gata6_threshold": 6,
+        "end_step": 120,
+        "inducer3_ratio": 0.5,
+        "aba_ratio": 0.2,
+        "PACE": False
+    }
+    sim = GATA6_Adhesion_Simulation_NN(model_params)
+    if sys.platform == 'win32':
+        sim.start("C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs")
+    elif sys.platform == 'darwin':
+        sim.start("/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs", model_params)
+    else:
+        print('exiting...')
