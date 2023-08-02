@@ -519,4 +519,5 @@ if __name__ == "__main__":
         "PACE": False
     }
     sim = GATA6_Adhesion_Coupled_Simulation(model_params)
-    sim.start("/Users/andrew/PycharmProjects/ST_CHO_adhesion_model/outputs/", model_params)
+    #sim.start("/Users/andrew/PycharmProjects/ST_CHO_adhesion_model/outputs/", model_params)
+    sim.start('/Users/andrew/PycharmProjects/CG_ABM_updated_AKJ/outputs/', model_params)
