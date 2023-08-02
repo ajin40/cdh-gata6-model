@@ -579,7 +579,7 @@ if __name__ == "__main__":
     }
     sim = GATA6_Adhesion_Coupled_Simulation(model_params)
     if sys.platform == 'win32':
-        sim.start("C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs")
+        sim.start("C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs", model_params)
     elif sys.platform == 'darwin':
         sim.start("/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs", model_params)
     else:
