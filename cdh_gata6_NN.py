@@ -1,5 +1,5 @@
 import numpy as np
-from numba import jit
+from numba import jit, prange
 from simulation import Simulation, record_time
 import backend
 import cv2
@@ -24,9 +24,9 @@ def get_neighbor_forces(edge_forces, num_agents, cell_types, locations, radii, c
         edge_forces[i] += -1 * net_force_repulsion + net_force_attraction -grav * (new_loc / well_rad) * new_loc_sum ** (1/2)
     return edge_forces
 
-@jit(nopython=True)
+@jit(nopython=True, parallel=True)
 def convert_edge_forces(number_edges, edges, edge_forces, neighbor_forces):
-    for index in range(number_edges):
+    for index in prange(number_edges):
         # get indices of cells in edge
         cell_1 = edges[index][0]
         cell_2 = edges[index][1]

@@ -1,5 +1,5 @@
 import numpy as np
-from numba import jit
+from numba import jit, prange
 from simulation import Simulation, record_time
 import backend
 import cv2
@@ -9,7 +9,7 @@ import sys
 @jit(nopython=True, parallel=True)
 def get_neighbor_forces(number_edges, edges, edge_forces, locations, center, types, radius, alpha=10, r_e=1.01,
                         u_bb=5, u_rb=1, u_yb=1, u_rr=20, u_ry=12, u_yy=30, u_repulsion=10000):
-    for index in range(number_edges):
+    for index in prange(number_edges):
         # get indices of cells in edge
         cell_1 = edges[index][0]
         cell_2 = edges[index][1]
@@ -47,7 +47,7 @@ def paraboloid_slope(x, y, a):
 
 @jit(nopython=True, parallel=True)
 def get_gravity_forces(number_cells, locations, center, well_rad, net_forces, grav=1):
-    for index in range(number_cells):
+    for index in prange(number_cells):
         new_loc = locations[index] - center
         grav_vector = np.array([-2*1/well_rad*new_loc[0], -2*1/well_rad*new_loc[1], -1])
         mag = (grav_vector[0] ** 2 + grav_vector[1] ** 2 + grav_vector[2] ** 2) ** (1/2)
@@ -57,7 +57,7 @@ def get_gravity_forces(number_cells, locations, center, well_rad, net_forces, gr
 
 @jit(nopython=True)
 def convert_edge_forces(number_edges, edges, edge_forces, neighbor_forces):
-    for index in range(number_edges):
+    for index in prange(number_edges):
         # get indices of cells in edge
         cell_1 = edges[index][0]
         cell_2 = edges[index][1]

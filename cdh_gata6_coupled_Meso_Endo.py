@@ -1,5 +1,5 @@
 import numpy as np
-from numba import jit
+from numba import jit, prange
 from simulation import Simulation, record_time
 import backend
 import cv2
@@ -15,7 +15,7 @@ def get_neighbor_forces(number_edges, edges, edge_forces, locations, center, typ
     adhesion_values[1, 1] = u_11
     adhesion_values[2, 2] = u_22
     adhesion_values[3, 3] = u_33
-    for index in range(number_edges):
+    for index in prange(number_edges):
         # get indices of cells in edge
         cell_1 = edges[index][0]
         cell_2 = edges[index][1]
@@ -50,7 +50,7 @@ def get_neighbor_forces(number_edges, edges, edge_forces, locations, center, typ
 
 @jit(nopython=True, parallel=True)
 def get_gravity_forces(number_cells, locations, center, well_rad, net_forces, grav=1):
-    for index in range(number_cells):
+    for index in prange(number_cells):
         new_loc = locations[index] - center
         grav_vector = np.array([-2*1/well_rad*new_loc[0], -2*1/well_rad*new_loc[1], -1])
         mag = (grav_vector[0] ** 2 + grav_vector[1] ** 2 + grav_vector[2] ** 2) ** (1/2)
@@ -58,9 +58,9 @@ def get_gravity_forces(number_cells, locations, center, well_rad, net_forces, gr
     return net_forces
 
 
-@jit(nopython=True)
+@jit(nopython=True, parallel=True)
 def convert_edge_forces(number_edges, edges, edge_forces, neighbor_forces):
-    for index in range(number_edges):
+    for index in prange(number_edges):
         # get indices of cells in edge
         cell_1 = edges[index][0]
         cell_2 = edges[index][1]
@@ -214,16 +214,16 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
         self.UN_TO_ME_counter = np.zeros(self.number_agents)
         self.ME_TO_M_counter = np.zeros(self.number_agents)
         self.ME_TO_E_counter = np.zeros(self.number_agents)
-        self.solve_odes()
-        for i in range(self.sub_ts):
-            # get all neighbors within threshold (1.6 * diameter)
-            self.get_neighbors(self.neighbor_graph, self.cell_interaction_rad * self.cell_rad)
-            # move the cells and track total repulsion vs adhesion forces
-            self.move_parallel()
 
+        self.solve_odes()
+        # for i in range(self.sub_ts):
+        #     print(i)
+        #     # get all neighbors within threshold (1.6 * diameter)
+        #     self.get_neighbors(self.neighbor_graph, self.cell_interaction_rad * self.cell_rad)
+        #     # move the cells and track total repulsion vs adhesion forces
+        #     self.move_parallel()
         # save parameters to text file
         self.save_params(self.model_params)
-
         # record initial values
         self.step_values()
         self.step_image()

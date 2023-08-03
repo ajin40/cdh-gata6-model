@@ -11,7 +11,7 @@ if __name__ == '__main__':
     if sys.platform == 'win32':
         outputs = "C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs"
     elif sys.platform == 'darwin':
-        outputs = "/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs", model_params
+        outputs = "/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs"
     else:
         print('exiting...')
     a = parameter_sweep_abm(0, outputs, induction1, induction2, conc,
