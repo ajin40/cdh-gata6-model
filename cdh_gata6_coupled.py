@@ -93,7 +93,6 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
 
         self.default_parameters = {
             "num_to_start": 1000,
-            "cuda": False,
             "size": [1, 1, 1],
             "well_rad": 50,
             "output_values": True,
@@ -504,7 +503,8 @@ def parameter_sweep_abm(par, directory, dox_induction_step, induction_value, fin
         "induction_value": induction_value,
         "gata6_threshold": 6,
         "end_step": final_ts,
-        "PACE": False
+        "PACE": False,
+        "cuda": True
     }
     name = f'{datetime.date.today()}_CDH+GATA6_{induction_value}dox_at_{dox_induction_step}'
     sim = GATA6_Adhesion_Coupled_Simulation(model_params)
@@ -517,7 +517,8 @@ if __name__ == "__main__":
         "induction_value": 0.5,
         "gata6_threshold": 6,
         "end_step": 120,
-        "PACE": False
+        "PACE": False,
+        "cuda": True
     }
     sim = GATA6_Adhesion_Coupled_Simulation(model_params)
     if sys.platform == 'win32':

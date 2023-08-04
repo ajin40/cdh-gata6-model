@@ -208,7 +208,6 @@ class Simulation(ABC):
 
             # if using CUDA GPU
             if self.cuda:
-                print('THIS IS BYPASSING YOUR CURRENT SPECS')
                 # allow the following arrays to be passed to the GPU
                 edges = cuda.to_device(edges)
                 if_edge = cuda.to_device(if_edge)

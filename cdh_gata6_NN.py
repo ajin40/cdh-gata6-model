@@ -77,7 +77,6 @@ class GATA6_Adhesion_Simulation_NN(Simulation):
 
         self.default_parameters = {
             "num_to_start": 1000,
-            "cuda": False,
             "size": [1, 1, 1],
             "well_rad": 30,
             "output_values": True,
@@ -510,7 +509,8 @@ def parameter_sweep_abm(par, directory, dox_induction_step, cdh_induction_step, 
         "end_step": final_ts,
         "inducer3_ratio": dox_ratio,
         "aba_ratio": aba_ratio,
-        "PACE": False
+        "PACE": False,
+        "cuda": True
     }
     name = f'{induction_value}dox_at_{dox_induction_step}_cdh_at_{cdh_induction_step}dox{dox_ratio}_aba{aba_ratio}_Delaunay'
     sim = GATA6_Adhesion_Simulation_NN(model_params)
@@ -526,7 +526,8 @@ if __name__ == "__main__":
         "end_step": 120,
         "inducer3_ratio": 0.5,
         "aba_ratio": 0.2,
-        "PACE": False
+        "PACE": False,
+        "cuda": True
     }
     sim = GATA6_Adhesion_Simulation_NN(model_params)
     if sys.platform == 'win32':
