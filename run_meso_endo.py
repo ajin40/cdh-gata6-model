@@ -9,6 +9,8 @@ if __name__ == '__main__':
         outputs = "C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs"
     elif sys.platform == 'darwin':
         outputs = "/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs"
+    elif sys.platform =='linux':
+        outputs = '/home/ajin40/models/model_outputs'
     else:
-        print('exiting...')
+        print('I did not plan for another system platform... exiting...')
     a = parameter_sweep_abm(0, outputs, induction1, conc, final_ts=240)

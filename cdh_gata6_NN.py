@@ -533,5 +533,7 @@ if __name__ == "__main__":
         sim.start("C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs", model_params)
     elif sys.platform == 'darwin':
         sim.start("/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs", model_params)
+    elif sys.platform =='linux':
+        sim.start('/home/ajin40/models/model_outputs', model_params)
     else:
-        print('exiting...')
+        print('I did not plan for another system platform... exiting...')
