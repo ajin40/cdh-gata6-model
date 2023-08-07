@@ -568,21 +568,41 @@ def parameter_sweep_abm(par, directory, dox_induction_step, induction_value, fin
 
 
 if __name__ == "__main__":
-    model_params = {
-        "dox_induction_step": 12,
-        "induction_value": 0.8,
-        "gata6_threshold": 40,
-        "foxa2_threshold": 15,
-        "end_step": 120,
-        "PACE": False,
-        "cuda": True
-    }
-    sim = GATA6_Adhesion_Coupled_Simulation(model_params)
     if sys.platform == 'win32':
+        model_params = {
+            "dox_induction_step": 12,
+            "induction_value": 0.8,
+            "gata6_threshold": 40,
+            "foxa2_threshold": 15,
+            "end_step": 120,
+            "PACE": False,
+            "cuda": True
+        }
+        sim = GATA6_Adhesion_Coupled_Simulation(model_params)
         sim.start("C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs", model_params)
     elif sys.platform == 'darwin':
+        model_params = {
+            "dox_induction_step": 12,
+            "induction_value": 0.8,
+            "gata6_threshold": 40,
+            "foxa2_threshold": 15,
+            "end_step": 120,
+            "PACE": False,
+            "cuda": False
+        }
+        sim = GATA6_Adhesion_Coupled_Simulation(model_params)
         sim.start("/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs", model_params)
     elif sys.platform =='linux':
+        model_params = {
+            "dox_induction_step": 12,
+            "induction_value": 0.8,
+            "gata6_threshold": 40,
+            "foxa2_threshold": 15,
+            "end_step": 120,
+            "PACE": False,
+            "cuda": True
+        }
+        sim = GATA6_Adhesion_Coupled_Simulation(model_params)
         sim.start('/home/ajin40/models/model_outputs', model_params)
     else:
         print('I did not plan for another system platform... exiting...')
