@@ -600,7 +600,7 @@ if __name__ == "__main__":
             "foxa2_threshold": 15,
             "end_step": 120,
             "PACE": False,
-            "cuda": True
+            "cuda": False
         }
         sim = GATA6_Adhesion_Coupled_Simulation(model_params)
         sim.start('/home/ajin40/models/model_outputs', model_params)
