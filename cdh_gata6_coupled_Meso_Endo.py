@@ -1,6 +1,6 @@
 import numpy as np
 from numba import jit, prange
-from simulation import Simulation, record_time
+from pythonabm.simulation import Simulation, record_time
 import pythonabm.backend as backend
 import cv2
 import gata6_model_MesoEndo_V2 as RD
@@ -80,6 +80,7 @@ def calculate_rate(combined_percent, end_step, induction_step):
 def calculate_transition_rate(combined_percent, t, induction_step):
     transition_rate = 1 - (1-combined_percent) ** (t - induction_step)
     return transition_rate
+
 
 class GATA6_Adhesion_Coupled_Simulation(Simulation):
     """ This class inherits the Simulation class allowing it to run a
@@ -187,7 +188,7 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
                                             'FOXF1_conc']
         for name in self.intracellular_gradient_names:
             self.indicate_arrays(name)
-            self.__dict__[name] = self.agent_array(initial=0)
+            self.__dict__[name] = self.agent_array(dtype=float)
 
         self.intracellular_dProt_names = ['dNANOG',
                                         'dGATA6',
@@ -196,11 +197,11 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
         
         for name in self.intracellular_dProt_names:
             self.indicate_arrays(name)
-            self.__dict__[name] = self.agent_array(initial=0)
+            self.__dict__[name] = self.agent_array(dtype=float)
 
         self.nanog_rna_conc = np.random.normal(32, size=self.number_agents)
         self.NANOG_conc = np.random.normal(43, size=self.number_agents)
-        self.copy_number = self.agent_array(initial=0)
+        self.copy_number = self.agent_array(dtype=float)
         self.copy_number = np.random.uniform(2, 16, size=self.number_agents)
 
         #cell state transition
@@ -490,12 +491,11 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
             return
 
     @classmethod
-    def simulation_mode_0(cls, name, output_dir, model_params):
+    def simulation_mode_0(cls, name, output_dir):
         """ Creates a new brand new simulation and runs it through
             all defined steps.
         """
         # make simulation instance, update name, and add paths
-        sim = cls(model_params)
         sim.name = name
         sim.set_paths(output_dir)
 
@@ -514,56 +514,22 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
                 parameters.write(f"{key}: {params[key]}\n")
         parameters.close()
 
-    @classmethod
-    def start_sweep(cls, output_dir, model_params, name):
-        """ Configures/runs the model based on the specified
-            simulation mode.
-        """
-        # check that the output directory exists and get the name/mode for the simulation
-        output_dir = backend.check_output_dir(output_dir)
-
-        name = backend.check_existing(name, output_dir, new_simulation=True)
-        cls.simulation_mode_0(name, output_dir, model_params)
-
     def get_concentrations(self):
         conc_list = []
         for name in self.intracellular_gradient_names:
             conc_list.append(self.__dict__[name])
         return conc_list
 
+    def model_parameters(self, model_params):
+        """ Add the instance variables to the Simulation object based
+            on the keys and values from a YAML file.
 
-def parameter_sweep_abm(par, directory, dox_induction_step, induction_value, final_ts=45):
-    """ Run model with specified parameters
-        :param par: simulation number
-        :param directory: Location of model outputs. A folder titled 'outputs' is required
-        :param RR: Adhesion value for R-R cell interactions
-        :param YY: Adhesion value for Y-Y cell interactions
-        :param RY: Adhesion value for R-Y cell interactions
-        :param dox_ratio: final ratio of Red cells at simulation end. 1 - (dox_ratio + aba_ratio) = # of remaining uncommitted blue cells.
-        :param aba_ratio: final ratio of Yellow cells at simulation end.
-        :param final_ts: Final timestep. 60 ts = 96h, 45 ts = 72h
-        :type par int
-        :type directory: String
-        :type RR: float
-        :type YY: float
-        :type RY: float
-        :type dox_ratio: float
-        :type aba_ratio: float
-        :type final_ts: int
-    """
-    model_params = {
-        "dox_induction_step": dox_induction_step,
-        "induction_value": induction_value,
-        "gata6_threshold": 40,
-        "foxa2_threshold": 15,
-        "end_step": final_ts,
-        "PACE": False,
-        "cuda": True
-    }
-    name = f'{datetime.date.today()}_MESO_ENDO_{induction_value}dox_at_{dox_induction_step}'
-    sim = GATA6_Adhesion_Coupled_Simulation(model_params)
-    sim.start_sweep(directory, model_params, name)
-    return par, sim.image_quality, sim.image_quality, 3, final_ts/sim.sub_ts
+            :param model_params: List of all parameters.
+            :type model_params: dictionary
+        """
+
+        for key in list(model_params.keys()):
+            self.__dict__[key] = model_params[key]
 
 
 if __name__ == "__main__":
@@ -578,7 +544,7 @@ if __name__ == "__main__":
             "cuda": True
         }
         sim = GATA6_Adhesion_Coupled_Simulation(model_params)
-        sim.start("C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs", model_params)
+        sim.start("C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs")
     elif sys.platform == 'darwin':
         model_params = {
             "dox_induction_step": 12,
@@ -590,7 +556,7 @@ if __name__ == "__main__":
             "cuda": False
         }
         sim = GATA6_Adhesion_Coupled_Simulation(model_params)
-        sim.start("/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs", model_params)
+        sim.start("/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs")
     elif sys.platform =='linux':
         model_params = {
             "dox_induction_step": 12,
