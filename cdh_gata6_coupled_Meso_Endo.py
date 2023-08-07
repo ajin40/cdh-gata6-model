@@ -4,7 +4,6 @@ from pythonabm.simulation import Simulation, record_time
 import pythonabm.backend as backend
 import cv2
 import gata6_model_MesoEndo_V2 as RD
-import datetime
 import sys
 
 @jit(nopython=True, parallel=True)
