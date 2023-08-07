@@ -1,20 +1,14 @@
 import numpy as np
 from numba import jit, prange
 from simulation import Simulation, record_time
-import backend
+import pythonabm.backend as backend
 import cv2
 import gata6_model_MesoEndo_V2 as RD
 import datetime
 import sys
 
 @jit(nopython=True, parallel=True)
-def get_neighbor_forces(number_edges, edges, edge_forces, locations, center, types, radius, r_e=1.01,
-                        u_00=1, u_11=1, u_22=1, u_33=1, u_repulsion=10000):
-    adhesion_values = np.ones((4, 4))
-    adhesion_values[0, 0] = u_00
-    adhesion_values[1, 1] = u_11
-    adhesion_values[2, 2] = u_22
-    adhesion_values[3, 3] = u_33
+def get_neighbor_forces(number_edges, edges, edge_forces, locations, center, types, radius, adhesion_values, r_e=1.01, u_repulsion=10000):
     for index in prange(number_edges):
         # get indices of cells in edge
         cell_1 = edges[index][0]
@@ -214,6 +208,12 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
         self.ME_TO_M_counter = np.zeros(self.number_agents)
         self.ME_TO_E_counter = np.zeros(self.number_agents)
 
+        self.adhesion_matrix = np.ones((4, 4))
+        self.adhesion_matrix[0, 0] = self.u_00
+        self.adhesion_matrix[1, 1] = self.u_11
+        self.adhesion_matrix[2, 2] = self.u_22
+        self.adhesion_matrix[3, 3] = self.u_33
+
         self.solve_odes()
         for i in range(self.sub_ts):
             # get all neighbors within threshold (1.6 * diameter)
@@ -402,8 +402,7 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
         neighbor_forces = np.zeros((self.number_agents, 3))
         # get adhesive/repulsive forces from neighbors and gravity forces
         edge_forces = get_neighbor_forces(num_edges, edges, edge_forces, self.locations, self.center, self.cell_type,
-                                          self.cell_rad, u_00=self.u_00, u_11=self.u_11, u_22=self.u_22, u_33=self.u_33,
-                                          u_repulsion=self.u_repulsion)
+                                          self.cell_rad, self.adhesion_matrix, u_repulsion=self.u_repulsion)
         neighbor_forces = convert_edge_forces(num_edges, edges, edge_forces, neighbor_forces)
         noise_vector = np.ones((self.number_agents, 3)) * self.alpha * (2 * np.random.rand(self.number_agents, 3) - 1)
         neighbor_forces = neighbor_forces + noise_vector
