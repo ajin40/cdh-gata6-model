@@ -1,5 +1,6 @@
 import sys
 from cdh_gata6_coupled_Meso_Endo import *
+import datetime
 
 def parameter_sweep_abm(par, directory, dox_induction_step, induction_value, final_ts=45):
     """ Run model with specified parameters
