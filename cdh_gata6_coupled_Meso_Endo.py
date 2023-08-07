@@ -215,12 +215,11 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
         self.ME_TO_E_counter = np.zeros(self.number_agents)
 
         self.solve_odes()
-        # for i in range(self.sub_ts):
-        #     print(i)
-        #     # get all neighbors within threshold (1.6 * diameter)
-        #     self.get_neighbors(self.neighbor_graph, self.cell_interaction_rad * self.cell_rad)
-        #     # move the cells and track total repulsion vs adhesion forces
-        #     self.move_parallel()
+        for i in range(self.sub_ts):
+            # get all neighbors within threshold (1.6 * diameter)
+            self.get_neighbors(self.neighbor_graph, self.cell_interaction_rad * self.cell_rad)
+            # move the cells and track total repulsion vs adhesion forces
+            self.move_parallel()
         # save parameters to text file
         self.save_params(self.model_params)
         # record initial values
