@@ -1,20 +1,18 @@
 import numpy as np
 from numba import jit, prange
-from simulation import Simulation, record_time
-import backend
+from pythonabm.simulation import Simulation, record_time
+import pythonabm.backend as backend
 import cv2
 import gata6_model_EP as EP1
 import datetime
 import sys
 
 @jit(nopython=True, parallel=True)
-def get_neighbor_forces(number_edges, edges, edge_forces, locations, center, types, radius, alpha=10, r_e=1.01,
-                        u_bb=5, u_rb=1, u_yb=1, u_rr=20, u_ry=12, u_yy=30, u_repulsion=10000):
+def get_neighbor_forces(number_edges, edges, edge_forces, locations, center, types, radius, adhesion_values, r_e=1.01, u_repulsion=10000):
     for index in prange(number_edges):
         # get indices of cells in edge
         cell_1 = edges[index][0]
         cell_2 = edges[index][1]
-        adhesion_values = np.reshape(np.array([u_bb, u_rb, u_yb, u_yb, u_rr, u_ry, u_rb, u_ry, u_yy]), (3, 3))
         # get cell positions
         cell_1_loc = locations[cell_1] - center
         cell_2_loc = locations[cell_2] - center
@@ -54,7 +52,7 @@ def get_gravity_forces(number_cells, locations, center, well_rad, net_forces, gr
     return net_forces
 
 
-@jit(nopython=True)
+@jit(nopython=True, parallel=True)
 def convert_edge_forces(number_edges, edges, edge_forces, neighbor_forces):
     for index in prange(number_edges):
         # get indices of cells in edge
@@ -106,15 +104,12 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
             "cell_interaction_rad": 3.2,
             "replication_type": 'None',
             "sub_ts": 600,
-            "u_bb": 1,
-            "u_rb": 1,
-            "u_yb": 1,
-            "u_rr": 30,
+            "u_00": 1,
+            "u_11": 30,
+            "u_22": 30,
             "u_repulsion": 10000,
             "alpha": 10,
             "gravity": 10,
-            "u_yy": 40,
-            "u_ry": 1,
             "PACE": False
         }
         self.model_parameters(self.default_parameters)
@@ -192,10 +187,19 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
 
         #cell state transition
         self.UN_TO_ME_counter = np.zeros(self.number_agents)
+        self.adhesion_matrix = np.ones((3, 3))
+        self.adhesion_matrix[0, 0] = self.u_00
+        self.adhesion_matrix[1, 1] = self.u_11
+        self.adhesion_matrix[2, 2] = self.u_22
         self.solve_odes()
 
         # save parameters to text file
         self.save_params(self.model_params)
+        for i in range(self.sub_ts):
+            # get all neighbors within threshold (1.6 * diameter)
+            self.get_neighbors(self.neighbor_graph, self.cell_interaction_rad * self.cell_rad)
+            # move the cells and track total repulsion vs adhesion forces
+            self.move_parallel()
 
         # record initial values
         self.step_values()
@@ -355,8 +359,7 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
         neighbor_forces = np.zeros((self.number_agents, 3))
         # get adhesive/repulsive forces from neighbors and gravity forces
         edge_forces = get_neighbor_forces(num_edges, edges, edge_forces, self.locations, self.center, self.cell_type,
-                                          self.cell_rad, u_bb=self.u_bb, u_rb=self.u_rb, u_rr=self.u_rr, u_yb=self.u_yb,
-                                          u_ry=self.u_ry, u_yy=self.u_yy, alpha=0, u_repulsion=self.u_repulsion)
+                                          self.cell_rad, self.adhesion_matrix, u_repulsion=self.u_repulsion)
         neighbor_forces = convert_edge_forces(num_edges, edges, edge_forces, neighbor_forces)
         noise_vector = np.ones((self.number_agents, 3)) * self.alpha * (2 * np.random.rand(self.number_agents, 3) - 1)
         neighbor_forces = neighbor_forces + noise_vector
@@ -444,12 +447,11 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
             return
 
     @classmethod
-    def simulation_mode_0(cls, name, output_dir, model_params):
+    def simulation_mode_0(cls, name, output_dir):
         """ Creates a new brand new simulation and runs it through
             all defined steps.
         """
         # make simulation instance, update name, and add paths
-        sim = cls(model_params)
         sim.name = name
         sim.set_paths(output_dir)
 
@@ -468,64 +470,43 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
                 parameters.write(f"{key}: {params[key]}\n")
         parameters.close()
 
-    @classmethod
-    def start_sweep(cls, output_dir, model_params, name):
-        """ Configures/runs the model based on the specified
-            simulation mode.
-        """
-        # check that the output directory exists and get the name/mode for the simulation
-        output_dir = backend.check_output_dir(output_dir)
-
-        name = backend.check_existing(name, output_dir, new_simulation=True)
-        cls.simulation_mode_0(name, output_dir, model_params)
-
-def parameter_sweep_abm(par, directory, dox_induction_step, induction_value, final_ts=45):
-    """ Run model with specified parameters
-        :param par: simulation number
-        :param directory: Location of model outputs. A folder titled 'outputs' is required
-        :param RR: Adhesion value for R-R cell interactions
-        :param YY: Adhesion value for Y-Y cell interactions
-        :param RY: Adhesion value for R-Y cell interactions
-        :param dox_ratio: final ratio of Red cells at simulation end. 1 - (dox_ratio + aba_ratio) = # of remaining uncommitted blue cells.
-        :param aba_ratio: final ratio of Yellow cells at simulation end.
-        :param final_ts: Final timestep. 60 ts = 96h, 45 ts = 72h
-        :type par int
-        :type directory: String
-        :type RR: float
-        :type YY: float
-        :type RY: float
-        :type dox_ratio: float
-        :type aba_ratio: float
-        :type final_ts: int
-    """
-    model_params = {
-        "dox_induction_step": dox_induction_step,
-        "induction_value": induction_value,
-        "gata6_threshold": 6,
-        "end_step": final_ts,
-        "PACE": False,
-        "cuda": True
-    }
-    name = f'{datetime.date.today()}_CDH+GATA6_{induction_value}dox_at_{dox_induction_step}'
-    sim = GATA6_Adhesion_Coupled_Simulation(model_params)
-    sim.start_sweep(directory, model_params, name)
-    return par, sim.image_quality, sim.image_quality, 3, final_ts/sim.sub_ts
 
 if __name__ == "__main__":
-    model_params = {
-        "dox_induction_step": 12,
-        "induction_value": 0.5,
-        "gata6_threshold": 6,
-        "end_step": 120,
-        "PACE": False,
-        "cuda": True
-    }
-    sim = GATA6_Adhesion_Coupled_Simulation(model_params)
     if sys.platform == 'win32':
-        sim.start("C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs", model_params)
+        model_params = {
+            "dox_induction_step": 12,
+            "induction_value": 0.8,
+            "gata6_threshold": 40,
+            "foxa2_threshold": 15,
+            "end_step": 120,
+            "PACE": False,
+            "cuda": True
+        }
+        sim = GATA6_Adhesion_Coupled_Simulation(model_params)
+        sim.start("C:\\Users\\ajin40\\Documents\\sim_outputs\\cdh_gata6_sims\\outputs")
     elif sys.platform == 'darwin':
-        sim.start("/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs", model_params)
+        model_params = {
+            "dox_induction_step": 12,
+            "induction_value": 0.8,
+            "gata6_threshold": 40,
+            "foxa2_threshold": 15,
+            "end_step": 120,
+            "PACE": False,
+            "cuda": False
+        }
+        sim = GATA6_Adhesion_Coupled_Simulation(model_params)
+        sim.start("/Users/andrew/Projects/sim_outputs/cdh_gata6_sims/outputs")
     elif sys.platform =='linux':
+        model_params = {
+            "dox_induction_step": 12,
+            "induction_value": 0.8,
+            "gata6_threshold": 40,
+            "foxa2_threshold": 15,
+            "end_step": 120,
+            "PACE": False,
+            "cuda": False
+        }
+        sim = GATA6_Adhesion_Coupled_Simulation(model_params)
         sim.start('/home/ajin40/models/model_outputs', model_params)
     else:
         print('I did not plan for another system platform... exiting...')
