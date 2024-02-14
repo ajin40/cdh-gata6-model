@@ -3,7 +3,7 @@ from numba import jit, prange
 from pythonabm.simulation import Simulation, record_time
 import pythonabm.backend as backend
 import cv2
-import gata6_model_MesoEndo_V3 as RD
+import gata6_model_MesoEndo_V4 as RD
 import sys
 
 @jit(nopython=True, parallel=True)
@@ -103,7 +103,7 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
             "initial_seed_ratio": 0.5,
             "cell_interaction_rad": 3.2,
             "replication_type": 'Contact_Inhibition',
-            "sub_ts": 600,
+            "sub_ts": 60,
             "u_00": 1,
             "u_11": 30,
             "u_22": 30,
@@ -123,7 +123,7 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
         self.foxa2_color = np.array([50, 255, 50], dtype=int) #green
         self.foxf1_color = np.array([255, 50, 50], dtype=int) #red
 
-        self.dox = 0.4
+        self.dox = 0
 
         self.initial_seed_rad = self.well_rad * self.initial_seed_ratio
         self.dim = np.asarray(self.size)
@@ -161,7 +161,11 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
         self.radii = self.agent_array(initial=lambda: self.cell_rad)
 
         # Define cell types, 2 is ABA, 1 is DOX, 0 is non-cadherin expressing cho cells
-        self.cell_type = self.agent_array(dtype=int, initial={"NANOG": lambda: 0})
+        self.cell_type = self.agent_array(dtype=int, initial={"NANOG": lambda: 0,
+                                                              "GATA6": lambda: 1,
+                                                              "FOXA2": lambda: 2,
+                                                              "FOXF1": lambda: 3})
+        
         self.colors = self.agent_array(dtype=int, vector=3, initial={"NANOG": lambda: self.nanog_color,
                                                                      "GATA6": lambda: self.gata6_color,
                                                                      "FOXA2": lambda: self.foxa2_color,
@@ -169,36 +173,43 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
 
         # setting division times (in seconds):
         # Not used in model
-        self.div_thresh = self.agent_array(initial={"NANOG": lambda: 18, "GATA6": lambda: 51, "FOXA2": lambda: 51, "FOXF1": lambda: 51})
-        self.division_set = self.agent_array(initial={"NANOG": lambda: np.random.rand() * 18, "GATA6": lambda: 0, "FOXA2": lambda: 0, "FOXF1": lambda: 0})
+        self.div_thresh_ref = np.array([18, 24, 36, 36])
+        self.div_thresh = self.agent_array(initial={"NANOG": lambda: self.div_thresh_ref[0], 
+                                                    "GATA6": lambda: self.div_thresh_ref[1], 
+                                                    "FOXA2": lambda: self.div_thresh_ref[2], 
+                                                    "FOXF1": lambda: self.div_thresh_ref[3]})
+        self.division_set = self.agent_array(initial={"NANOG": lambda: np.random.uniform(0, 18), "GATA6": lambda: 0, "FOXA2": lambda: 0, "FOXF1": lambda: 0})
 
         #indicate and create graphs for identifying neighbors
         self.indicate_graphs("neighbor_graph")
         self.neighbor_graph = self.agent_graph()
 
         # Intracellular Concentrations:
-        self.intracellular_gradient_names = ['NANOG_conc',
-                                            'GATA6_conc',
-                                            'Y1_conc',
-                                            'Y2_conc',
-                                            'FOXF1_conc',
-                                            'FOXA2_conc']
+        self.intracellular_gradient_names = ['nanog_mrna',
+                                             'NANOG_prot',
+                                             'gata6_mrna',
+                                            'GATA6_prot',
+                                            'foxa2_mrna',
+                                            'FOXA2_prot',
+                                            'foxf1_mrna',
+                                            'FOXF1_prot']
         for name in self.intracellular_gradient_names:
             self.indicate_arrays(name)
             self.__dict__[name] = self.agent_array(dtype=float)
 
-        self.intracellular_dProt_names = ['dNANOG',
-                                        'dGATA6',
-                                        'dFOXF1',
-                                        'dFOXA2']
+        # self.intracellular_dProt_names = ['dNANOG',
+        #                                 'dGATA6',
+        #                                 'dFOXF1',
+        #                                 'dFOXA2']
         
-        for name in self.intracellular_dProt_names:
-            self.indicate_arrays(name)
-            self.__dict__[name] = self.agent_array(dtype=float)
-
-        self.NANOG_conc = np.random.normal(32, size=self.number_agents)
+        # for name in self.intracellular_dProt_names:
+        #     self.indicate_arrays(name)
+        #     self.__dict__[name] = self.agent_array(dtype=float)
+            
+        self.nanog_mrna = np.ones(self.number_agents) * 8
+        self.NANOG_prot = np.ones(self.number_agents) * 8
         self.copy_number = self.agent_array(dtype=float)
-        self.copy_number = np.random.uniform(2, 16, size=self.number_agents)
+        self.copy_number = np.random.uniform(2, 20, size=self.number_agents)
 
         #cell state transition
         self.UN_TO_ME_counter = np.zeros(self.number_agents)
@@ -347,27 +358,27 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
         if self.current_step > self.dox_induction_step:
             self.dox = self.induction_value
         # Updating GATA6 + NANOG
-        values = RD.dudt(self.get_concentrations(),
+        values = RD.RHS_full(self.get_concentrations(),
+                            1,
                             self.dox,
-                            self.copy_number,
-                            1)
+                            self.copy_number)
         i = 0
-        for name in self.intracellular_gradient_names + self.intracellular_dProt_names:
+        for name in self.intracellular_gradient_names: # + self.intracellular_dProt_names:
             self.__dict__[name] = values[i]
             i+= 1
         
 
     def cell_fate(self):
-        '''
+        
         # Using Chad's Thresholding rules... may need to fit the probability functions 
-        self.UN_TO_ME_counter[self.GATA6_conc > self.gata6_threshold] += 1
-        self.UN_TO_ME_counter[self.GATA6_conc < self.gata6_threshold] -= 1
+        self.UN_TO_ME_counter[(self.NANOG_prot < self.nanog_threshold)] += 1
+        self.UN_TO_ME_counter[(self.NANOG_prot > self.nanog_threshold)] -= 1
         self.UN_TO_ME_counter[self.UN_TO_ME_counter < 0] = 0
 
-        self.ME_TO_E_counter[((self.FOXA2_conc > self.foxa2_threshold) * (self.cell_type == 1))] += 1
-        self.ME_TO_E_counter[((self.FOXA2_conc < self.foxa2_threshold) * (self.cell_type == 1))] -= 1
-        self.ME_TO_M_counter[((self.FOXA2_conc < self.foxa2_threshold) * (self.cell_type == 1))] += 1
-        self.ME_TO_M_counter[((self.FOXA2_conc > self.foxa2_threshold) * (self.cell_type == 1))] -= 1
+        self.ME_TO_E_counter[((self.FOXA2_prot > self.foxa2_threshold) * (self.cell_type == 1))] += 1
+        self.ME_TO_E_counter[((self.FOXA2_prot < self.foxa2_threshold) * (self.cell_type == 1))] -= 1
+        self.ME_TO_M_counter[((self.FOXF1_prot < self.foxa2_threshold) * (self.cell_type == 1))] += 1
+        self.ME_TO_M_counter[((self.FOXA2_prot > self.foxa2_threshold) * (self.cell_type == 1))] -= 1
         self.ME_TO_M_counter[self.ME_TO_M_counter < 0] = 0
         self.ME_TO_E_counter[self.ME_TO_E_counter < 0] = 0
 
@@ -380,16 +391,20 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
         self.cell_type[((x < transition_prob_M) * (self.cell_type == 1))] = 3
         '''
         # SS cell_fate determiniation
-        SS = 1e-1
-        self.cell_type[((self.GATA6_conc > self.gata6_threshold) * (self.cell_type == 0))] = 1
-        self.cell_type[((self.FOXA2_conc > self.foxa2_threshold) * (self.cell_type == 1) * (abs(self.dFOXA2) < SS))] = 2
-        self.cell_type[((self.FOXA2_conc < self.foxa2_threshold) * (self.cell_type == 1) * (abs(self.dFOXF1) < SS))] = 3
+        self.cell_type[((self.NANOG_prot < self.nanog_threshold) * (self.cell_type == 0))] = 1
+        self.cell_type[((self.FOXA2_prot > self.foxa2_threshold) * (self.cell_type == 1))] = 2
+        self.cell_type[((self.FOXF1_prot > self.foxf1_threshold) * (self.cell_type == 1))] = 3
+        '''
 
         self.update_colors()
+        self.update_division_thresholds()
 
     def update_colors(self):
         color_ref = np.array([self.nanog_color, self.gata6_color, self.foxa2_color, self.foxf1_color])
         self.colors = color_ref[self.cell_type]
+
+    def update_division_thresholds(self):
+        self.div_thresh = self.div_thresh_ref[self.cell_type]
 
     @record_time
     def move_parallel(self):
@@ -532,10 +547,11 @@ if __name__ == "__main__":
     if sys.platform == 'win32':
         model_params = {
             "dox_induction_step": 12,
-            "induction_value": 0.4,
-            "gata6_threshold": 15,
-            "foxa2_threshold": 15,
-            "end_step": 72,
+            "induction_value": 0.25,
+            "nanog_threshold": 0.5,
+            "foxa2_threshold": 5,
+            "foxf1_threshold": 5,
+            "end_step": 144,
             "PACE": False,
             "cuda": True
         }
