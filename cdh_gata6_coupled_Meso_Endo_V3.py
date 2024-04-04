@@ -535,7 +535,7 @@ if __name__ == "__main__":
     if sys.platform == 'win32':
         model_params = {
             "dox_induction_step": 12,
-            "induction_value": 0.25,
+            "induction_value": 0.05,
             "nanog_threshold": 3,
             "bifurcation_threshold": 4,
             "end_step": 120,

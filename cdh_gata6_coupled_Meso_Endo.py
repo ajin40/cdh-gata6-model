@@ -167,8 +167,7 @@ class GATA6_Adhesion_Coupled_Simulation(Simulation):
                                                                      "FOXA2": lambda: self.foxa2_color,
                                                                      "FOXF1": lambda: self.foxf1_color})
 
-        # setting division times (in seconds):
-        # Not used in model
+        # setting division times (in hours):
         self.div_thresh = self.agent_array(initial={"NANOG": lambda: 18, "GATA6": lambda: 51, "FOXA2": lambda: 51, "FOXF1": lambda: 51})
         self.division_set = self.agent_array(initial={"NANOG": lambda: np.random.rand() * 18, "GATA6": lambda: 0, "FOXA2": lambda: 0, "FOXF1": lambda: 0})
 
