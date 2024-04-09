@@ -29,8 +29,8 @@ class GATA6_response_model:
                  P1_inh_unbinding,
                  P1_act_binding,
                  P2_act_unbinding,
-                 mRNA_degradation_rate=1 / 120.,
-                 protein_degradation_rate=1 / 600.,
+                 mRNA_degradation_rate=np.log(2) / 120.,
+                 protein_degradation_rate=np.log(2) / 600.,
                  translation_rate=0.167,
                  unocc_transcription_rate=5.0e-08,
                  inhibited_transcription_rate=[5.0e-08, 5.0e-08]):
@@ -56,14 +56,13 @@ class GATA6_response_model:
         self.P2_act_unbinding = P2_act_unbinding
         
         # mRNAs
-        self.foxa2_mrna = Chemical(1.0)
-        self.foxf1_mrna = Chemical(1.0) 
+        self.foxa2_mrna = Chemical(0.0)
+        self.foxf1_mrna = Chemical(0.0) 
         
         # Proteins
-        self.Foxa2 = Chemical(1.0)
-        self.Foxf1 = Chemical(1.0)
-        self.Gata6 = Chemical(GATA6)
-        self.AddChemical(self.Gata6)
+        self.FOXA2_prot = Chemical(0.0)
+        self.FOXF1_prot = Chemical(0.0)
+        self.GATA6_prot = Chemical(GATA6)
         # Promoter States
         # Unbound (Default) each promoter has 2 copies. except exogenous gata6 (The synthetic Circuit)
         self.Pfoxa2 = Chemical(2.0)
@@ -90,7 +89,7 @@ class GATA6_response_model:
         # References for indexing
 
         self.mRNAs = [self.foxa2_mrna, self.foxf1_mrna]
-        self.proteins = [self.Foxa2, self.Foxf1]
+        self.proteins = [self.FOXA2_prot, self.FOXF1_prot, self.GATA6_prot]
         self.P0 = [self.Pfoxa2, self.Pfoxf1]
         self.P1_active = [self.Pfoxa2_FOXA2, self.Pfoxf1_FOXF1, self.Pfoxa2_GATA6, self.Pfoxf1_GATA6]
         self.P1_active_mRNA_ref = [0, 1, 0, 1]
@@ -98,7 +97,6 @@ class GATA6_response_model:
         self.P2_active = [self.Pfoxa2_GATA6_FOXA2, self.Pfoxf1_GATA6_FOXF1]
         self.P2_inhib = []
 
-        # self.P2_inhib = [self.Pfoxa2_GATA6_FOXF1, self.Pfoxf1_GATA6_FOXA2]
         for chem in self.mRNAs:
             self.AddChemical(chem)
         for chem in self.proteins:
@@ -117,12 +115,12 @@ class GATA6_response_model:
             
         # Adding mRNA reactions        
         # mRNA into Protein        
-        self.AddReaction(CatalyzedSynthesisReaction(self.foxa2_mrna, self.Foxa2, self.translation_rate))
-        self.AddReaction(CatalyzedSynthesisReaction(self.foxf1_mrna, self.Foxf1, self.translation_rate))
+        self.AddReaction(CatalyzedSynthesisReaction(self.foxa2_mrna, self.FOXA2_prot, self.translation_rate))
+        self.AddReaction(CatalyzedSynthesisReaction(self.foxf1_mrna, self.FOXF1_prot, self.translation_rate))
 
         # #Protein Degradation
-        self.AddReaction(DegradationReaction(self.Foxf1, self.protein_degradation_rate))
-        self.AddReaction(DegradationReaction(self.Foxa2, self.protein_degradation_rate))
+        self.AddReaction(DegradationReaction(self.FOXF1_prot, self.protein_degradation_rate))
+        self.AddReaction(DegradationReaction(self.FOXA2_prot, self.protein_degradation_rate))
 
         # non-activated mRNA production
         self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1, self.foxf1_mrna, self.unocc_transcription_rate))
@@ -137,173 +135,74 @@ class GATA6_response_model:
         self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_FOXF1, self.foxf1_mrna, self.act_transcription_rate[1]))
         self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_GATA6, self.foxa2_mrna, self.act_transcription_rate[2]))
         self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_GATA6, self.foxf1_mrna, self.act_transcription_rate[3]))
+
         self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_GATA6_FOXA2, self.foxa2_mrna, self.double_act_transcription_rate[0]))
         self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_GATA6_FOXF1, self.foxf1_mrna, self.double_act_transcription_rate[1]))
+
+        # Inhibited mRNA production
         self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_FOXF1, self.foxa2_mrna, self.inh_transcription_rate[0]))
         self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_FOXA2, self.foxf1_mrna, self.inh_transcription_rate[1]))
-        # for i in range(2):
-        #     self.AddReaction(
-        #         DegradationReaction(self.mRNAs[i], self.mRNA_degradation_rate))
-            
-        # for i in range(2):
-        #     self.AddReaction(
-        #         CatalyzedSynthesisReaction(self.mRNAs[i], self.proteins[i], self.translation_rate))
-            
-        # for i in range(2):
-        #     self.AddReaction(
-        #         DegradationReaction(self.proteins[i], self.protein_degradation_rate))
-            
-        # for i in range(2):
-        #     self.AddReaction(
-        #         CatalyzedSynthesisReaction(self.P0[i],
-        #                                    self.mRNAs[i],
-        #                                    self.unocc_transcription_rate))
-        # for i in range(4):
-        #     print(self.P1_active_mRNA_ref[i])
-        #     self.AddReaction(
-        #         CatalyzedSynthesisReaction(self.P1_active[i],
-        #                                    self.mRNAs[self.P1_active_mRNA_ref[i]],
-        #                                    self.act_transcription_rate[i]))
-                                           
-        # for i in range(2):
-        #     self.AddReaction(
-        #         CatalyzedSynthesisReaction(self.P1_inhib[i],
-        #                                    self.mRNAs[i],
-        #                                    self.inh_transcription_rate[i]))
-        # for i in range(2):
-        #     self.AddReaction(
-        #         CatalyzedSynthesisReaction(self.P2_active[i],
-        #                                    self.mRNAs[i],
-        #                                    self.double_act_transcription_rate[i]))
-        
-        self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxa2, self.Foxa2, self.Pfoxa2_FOXA2, self.P_act_binding[0])
-        )
-        self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxa2_FOXA2, self.Pfoxa2, self.Foxa2, self.P1_act_unbinding[0])
-        )
-        self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxf1, self.Foxf1, self.Pfoxf1_FOXF1, self.P_act_binding[1])
-        )
-        self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxf1_FOXF1, self.Pfoxf1, self.Foxf1, self.P1_act_unbinding[1])
-        )
-        self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxa2, self.Gata6, self.Pfoxa2_GATA6, self.P_act_binding[2])
-        )
-        self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6, self.Pfoxa2, self.Gata6, self.P1_act_unbinding[2])
-        )
-        self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxf1, self.Gata6, self.Pfoxf1_GATA6, self.P_act_binding[3])
-        )
-        self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6, self.Pfoxf1, self.Gata6, self.P1_act_unbinding[3])
-        )
-        self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxa2, self.Foxf1, self.Pfoxa2_FOXF1, self.P_inh_binding[0])
-        )
-        self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxa2_FOXF1, self.Pfoxa2, self.Foxf1, self.P1_inh_unbinding[0])
-        )
-        self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxf1, self.Foxf1, self.Pfoxf1_FOXA2, self.P_inh_binding[1])
-        )
-        self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxf1_FOXA2, self.Pfoxf1, self.Foxa2, self.P1_inh_unbinding[1])
-        )
-        self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxa2_FOXA2, self.Gata6, self.Pfoxa2_GATA6_FOXA2, self.P1_act_binding[0])
-        )
-        self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6_FOXA2, self.Pfoxa2_FOXA2, self.Gata6, self.P2_act_unbinding[0])
-        )
-        self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxf1_FOXF1, self.Gata6, self.Pfoxf1_GATA6_FOXF1, self.P1_act_binding[1])
-        )
-        self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6_FOXF1, self.Pfoxf1_FOXF1, self.Gata6, self.P2_act_unbinding[1])
-        )
-        self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxa2_GATA6, self.Foxa2, self.Pfoxa2_GATA6_FOXA2, self.P1_act_binding[2])
-        )
-        self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6_FOXA2, self.Pfoxa2_GATA6, self.Foxa2, self.P2_act_unbinding[2])
-        )
-        self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxf1_GATA6, self.Foxf1, self.Pfoxf1_GATA6_FOXF1, self.P1_act_binding[3])
-        )
-        self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6_FOXF1, self.Pfoxf1_GATA6, self.Foxf1, self.P2_act_unbinding[3])
-        )
 
-        # # Activating FOXA2 P0 reactions
-        # for i in range(2):
-        #     protein_ref = [0, 2]
-        #     ref = [0, 2]
-        #     self.AddReaction(
-        #         HeterodimerBindingReaction(self.P0[0],
-        #                                    self.proteins[protein_ref[i]],
-        #                                    self.P1_active[ref[i]],
-        #                                    self.P_act_binding[ref[i]]))
-        #     self.AddReaction(
-        #         HeterodimerUnbindingReaction(self.P1_active[ref[i]],
-        #                                      self.P0[0],
-        #                                      self.proteins[protein_ref[i]],
-        #                                      self.P1_act_unbinding[ref[i]]))
-            
-        # # Activating FOXF1 P0 reactions
-        # for i in range(2):
-        #     protein_ref = [1, 2]
-        #     ref = [1, 3]
-        #     self.AddReaction(
-        #         HeterodimerBindingReaction(self.P0[1],
-        #                                    self.proteins[protein_ref[i]],
-        #                                    self.P1_active[ref[i]],
-        #                                    self.P_act_binding[ref[i]]))
-        #     self.AddReaction(
-        #         HeterodimerUnbindingReaction(self.P1_active[ref[i]],
-        #                                      self.P0[1],
-        #                                      self.proteins[protein_ref[i]],
-        #                                      self.P1_act_unbinding[ref[i]]))
-        
-        # # Inhibiting P0 reactions
-        # for i in range(2):
-        #     ref = [1, 0]
-        #     self.AddReaction(
-        #         HeterodimerBindingReaction(self.P0[i],
-        #                                    self.proteins[ref[i]],
-        #                                    self.P1_inhib[i],
-        #                                    self.P_inh_binding[i]))
-        #     self.AddReaction(
-        #         HeterodimerUnbindingReaction(self.P1_inhib[i],
-        #                                      self.P0[i],
-        #                                      self.proteins[ref[i]],
-        #                                      self.P1_inh_unbinding[i]))
-            
-        # for i in range(4):
-        #     if i > 1:
-        #         self.AddReaction(
-        #             HeterodimerBindingReaction(self.P1_active[i],
-        #                                     self.proteins[2],
-        #                                     self.P2_active[i-2],
-        #                                     self.P1_act_binding[i]))
-        #         self.AddReaction(
-        #             HeterodimerUnbindingReaction(self.P2_active[i-2],
-        #                                         self.P1_active[i],
-        #                                         self.proteins[2],
-        #                                         self.P2_act_unbinding[i]))
-        #     else:
-        #         self.AddReaction(
-        #             HeterodimerBindingReaction(self.P1_active[i],
-        #                                     self.proteins[i],
-        #                                     self.P2_active[i],
-        #                                     self.P1_act_binding[i]))
-        #         self.AddReaction(
-        #             HeterodimerUnbindingReaction(self.P2_active[i],
-        #                                         self.P1_active[i],
-        #                                         self.proteins[i],
-        #                                         self.P2_act_unbinding[i]))
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxa2, self.FOXA2_prot, self.Pfoxa2_FOXA2, self.P_act_binding[0])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxa2_FOXA2, self.Pfoxa2, self.FOXA2_prot, self.P1_act_unbinding[0])
+        )
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxf1, self.FOXF1_prot, self.Pfoxf1_FOXF1, self.P_act_binding[1])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxf1_FOXF1, self.Pfoxf1, self.FOXF1_prot, self.P1_act_unbinding[1])
+        )
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxa2, self.GATA6_prot, self.Pfoxa2_GATA6, self.P_act_binding[2])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6, self.Pfoxa2, self.GATA6_prot, self.P1_act_unbinding[2])
+        )
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxf1, self.GATA6_prot, self.Pfoxf1_GATA6, self.P_act_binding[3])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6, self.Pfoxf1, self.GATA6_prot, self.P1_act_unbinding[3])
+        )
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxa2, self.FOXF1_prot, self.Pfoxa2_FOXF1, self.P_inh_binding[0])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxa2_FOXF1, self.Pfoxa2, self.FOXF1_prot, self.P1_inh_unbinding[0])
+        )
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxf1, self.FOXA2_prot, self.Pfoxf1_FOXA2, self.P_inh_binding[1])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxf1_FOXA2, self.Pfoxf1, self.FOXA2_prot, self.P1_inh_unbinding[1])
+        )
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxa2_FOXA2, self.GATA6_prot, self.Pfoxa2_GATA6_FOXA2, self.P1_act_binding[0])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6_FOXA2, self.Pfoxa2_FOXA2, self.GATA6_prot, self.P2_act_unbinding[0])
+        )
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxf1_FOXF1, self.GATA6_prot, self.Pfoxf1_GATA6_FOXF1, self.P1_act_binding[1])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6_FOXF1, self.Pfoxf1_FOXF1, self.GATA6_prot, self.P2_act_unbinding[1])
+        )
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxa2_GATA6, self.FOXA2_prot, self.Pfoxa2_GATA6_FOXA2, self.P1_act_binding[2])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6_FOXA2, self.Pfoxa2_GATA6, self.FOXA2_prot, self.P2_act_unbinding[2])
+        )
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxf1_GATA6, self.FOXF1_prot, self.Pfoxf1_GATA6_FOXF1, self.P1_act_binding[3])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6_FOXF1, self.Pfoxf1_GATA6, self.FOXF1_prot, self.P2_act_unbinding[3])
+        )
 
         self.rates = np.zeros(len(self.reactions))
         for rIndex, r in enumerate(self.reactions):
@@ -338,7 +237,7 @@ class DeterministicResponse (GATA6_response_model):
     constituents in the model.
     """
 
-    def dcdt(self, t, c):
+    def dcdt(self, c, t):
         """dcdt(self, c, t) returns the instantaneous time rate of
         change of the DeterministicRepressilator system, given chemical
         concentration state vector c and current time t, for use in
@@ -369,13 +268,12 @@ class DeterministicResponse (GATA6_response_model):
         along with the trajectory corresponding to those time points.
         """
         eps = 1.0e-06
-        ts = [0, tmax + eps]
+        ts = np.arange(0, tmax + eps, dt)
         c = self.GetStateVector()
-        r = self.rates
-        traj = scipy.integrate.solve_ivp(self.dcdt, ts, c)
-        self.SetFromStateVector(traj.y[:, -1])
+        traj = scipy.integrate.odeint(self.dcdt, c, ts)
+        self.SetFromStateVector(traj[-1])
 
-        return traj.t, traj.y
+        return ts, traj
 
 def RunDeterministicResponse(GATA6, 
                              activated_transcription_rate,
@@ -410,12 +308,12 @@ def RunDeterministicResponse(GATA6,
         import pylab
         pylab.figure(1)
         for i in range(len(dr.mRNAs)):
-            pylab.plot(dts[:], dtraj[dr.chemIndex[dr.mRNAs[i]], :], curvetypes[i])
+            pylab.plot(dts, dtraj[:, dr.chemIndex[dr.mRNAs[i]]], curvetypes[i])
             pylab.legend(['foxa2', 'foxf1'])
         pylab.figure(2)
         curvetypes = ['r-', 'g-', 'm-', 'b-', 'k-', 'c-']
         for i in range(len(dr.proteins)):
-            pylab.plot(dts[:], dtraj[dr.chemIndex[dr.proteins[i]], :],curvetypes[i])
+            pylab.plot(dts, dtraj[:, dr.chemIndex[dr.proteins[i]]],curvetypes[i])
             pylab.legend(['FOXA2', 'FOXF1', 'GATA6'])
         if plotPromoter:
             pylab.figure(3)
