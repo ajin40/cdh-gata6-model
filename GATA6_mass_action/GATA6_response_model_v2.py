@@ -24,6 +24,7 @@ class GATA6_response_model:
                  activated_transcription_rate,
                  double_activated_transcription_rate,
                  triple_activated_transcription_rate,
+                 quad_activated_transcription_rate,
                  P_act_binding,
                  P_inh_binding,
                  P1_act_unbinding,
@@ -32,6 +33,8 @@ class GATA6_response_model:
                  P2_act_unbinding,
                  P2_act_binding,
                  P3_act_unbinding,
+                 P3_act_binding,
+                 P4_act_unbinding,
                  mRNA_degradation_rate=np.log(2) / 120.,
                  protein_degradation_rate=np.log(2) / 600.,
                  translation_rate=0.0167,
@@ -48,10 +51,12 @@ class GATA6_response_model:
         self.translation_rate = translation_rate
         self.unocc_transcription_rate = unocc_transcription_rate
 
-        self.act_transcription_rate = activated_transcription_rate
-        self.double_act_transcription_rate = double_activated_transcription_rate
-        self.triple_act_transcription_rate = triple_activated_transcription_rate
+        self.p1_transcription_rate = activated_transcription_rate
+        self.p2_transcription_rate = double_activated_transcription_rate
+        self.p3_transcription_rate = triple_activated_transcription_rate
+        self.p4_transcription_rate = quad_activated_transcription_rate
         self.inh_transcription_rate = inhibited_transcription_rate
+
         self.P_act_binding = P_act_binding
         self.P_inh_binding = P_inh_binding
         self.P1_act_unbinding = P1_act_unbinding
@@ -60,6 +65,8 @@ class GATA6_response_model:
         self.P2_act_unbinding = P2_act_unbinding
         self.P2_act_binding = P2_act_binding
         self.P3_act_unbinding = P3_act_unbinding
+        self.P3_act_binding = P3_act_binding
+        self.P4_act_unbinding = P4_act_unbinding
         
         # mRNAs
         self.foxa2_mrna = Chemical(0.0)
@@ -74,23 +81,25 @@ class GATA6_response_model:
         self.Pfoxa2 = Chemical(2.0)
         self.Pfoxf1 = Chemical(2.0)
         
-        # Single bound activated States
+        # Single bound GATA6 activated States
         self.Pfoxa2_GATA6 = Chemical(0.0)
         self.Pfoxf1_GATA6 = Chemical(0.0)
-        self.Pfoxa2_FOXA2 = Chemical(0.0)
-        self.Pfoxf1_FOXF1 = Chemical(0.0)
+
+        # Double bound GATA6 activated States
+        self.Pfoxa2_GATA6_GATA6 = Chemical(0.0)
+        self.Pfoxf1_GATA6_GATA6 = Chemical(0.0)
         
         # Single bound inhibited states
         self.Pfoxa2_FOXF1 = Chemical(0.0)
         self.Pfoxf1_FOXA2 = Chemical(0.0)
         
-        # Double bound activated states
-        self.Pfoxa2_GATA6_FOXA2 = Chemical(0.0)
-        self.Pfoxf1_GATA6_FOXF1 = Chemical(0.0)
+        # Double bound activated states + single bound self-activator
+        self.Pfoxa2_GATA6_GATA6_FOXA2 = Chemical(0.0)
+        self.Pfoxf1_GATA6_GATA6_FOXF1 = Chemical(0.0)
         
-        # Cooperatively bound active states
-        self.Pfoxa2_GATA6_FOXA2_FOXA2 = Chemical(0.0)
-        self.Pfoxf1_GATA6_FOXF1_FOXF1 = Chemical(0.0)
+        # Cooperatively double bound active states
+        self.Pfoxa2_GATA6_GATA6_FOXA2_FOXA2 = Chemical(0.0)
+        self.Pfoxf1_GATA6_GATA6_FOXF1_FOXF1 = Chemical(0.0)
         
         # References for indexing
 
@@ -98,9 +107,10 @@ class GATA6_response_model:
         self.proteins = [self.FOXA2_prot, self.FOXF1_prot, self.GATA6_prot]
         self.P0 = [self.Pfoxa2, self.Pfoxf1]
         self.P1_active = [self.Pfoxa2_GATA6, self.Pfoxf1_GATA6]
+        self.P2_active = [self.Pfoxa2_GATA6_GATA6, self.Pfoxf1_GATA6_GATA6]
         self.P1_inhib = [self.Pfoxa2_FOXF1, self.Pfoxf1_FOXA2]
-        self.P2_active = [self.Pfoxa2_GATA6_FOXA2, self.Pfoxf1_GATA6_FOXF1]
-        self.P3_active = [self.Pfoxa2_GATA6_FOXA2_FOXA2, self.Pfoxf1_GATA6_FOXF1_FOXF1]
+        self.P3_active = [self.Pfoxa2_GATA6_GATA6_FOXA2, self.Pfoxf1_GATA6_GATA6_FOXF1]
+        self.P4_active = [self.Pfoxa2_GATA6_GATA6_FOXA2_FOXA2, self.Pfoxf1_GATA6_GATA6_FOXF1_FOXF1]
 
         for chem in self.mRNAs:
             self.AddChemical(chem)
@@ -115,6 +125,8 @@ class GATA6_response_model:
         for chem in self.P2_active:
             self.AddChemical(chem)
         for chem in self.P3_active:
+            self.AddChemical(chem)
+        for chem in self.P4_active:
             self.AddChemical(chem)
             
             
@@ -136,14 +148,17 @@ class GATA6_response_model:
         self.AddReaction(DegradationReaction(self.foxa2_mrna, self.mRNA_degradation_rate))
 
         # Activated mRNA production
-        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_GATA6, self.foxa2_mrna, self.act_transcription_rate[0]))
-        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_GATA6, self.foxf1_mrna, self.act_transcription_rate[1]))
+        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_GATA6, self.foxa2_mrna, self.p1_transcription_rate[0]))
+        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_GATA6, self.foxf1_mrna, self.p1_transcription_rate[1]))
 
-        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_GATA6_FOXA2, self.foxa2_mrna, self.double_act_transcription_rate[0]))
-        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_GATA6_FOXF1, self.foxf1_mrna, self.double_act_transcription_rate[1]))
+        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_GATA6_GATA6, self.foxa2_mrna, self.p2_transcription_rate[0]))
+        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_GATA6_GATA6, self.foxf1_mrna, self.p2_transcription_rate[1]))
 
-        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_GATA6_FOXA2_FOXA2, self.foxa2_mrna, self.triple_act_transcription_rate[0]))
-        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_GATA6_FOXF1_FOXF1, self.foxf1_mrna, self.triple_act_transcription_rate[1]))
+        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_GATA6_GATA6_FOXA2, self.foxa2_mrna, self.p3_transcription_rate[0]))
+        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_GATA6_GATA6_FOXF1, self.foxf1_mrna, self.p3_transcription_rate[1]))
+
+        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_GATA6_GATA6_FOXA2_FOXA2, self.foxa2_mrna, self.p4_transcription_rate[0]))
+        self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxf1_GATA6_GATA6_FOXF1_FOXF1, self.foxf1_mrna, self.p4_transcription_rate[1]))
 
         # Inhibited mRNA production
         self.AddReaction(CatalyzedSynthesisReaction(self.Pfoxa2_FOXF1, self.foxa2_mrna, self.inh_transcription_rate[0]))
@@ -179,30 +194,43 @@ class GATA6_response_model:
       
         ### P1 -> P2
         self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxa2_GATA6, self.FOXA2_prot, self.Pfoxa2_GATA6_FOXA2, self.P1_act_binding[0])
+            HeterodimerBindingReaction(self.Pfoxa2_GATA6, self.GATA6_prot, self.Pfoxa2_GATA6_GATA6, self.P1_act_binding[0])
         )
         self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6_FOXA2, self.Pfoxa2_GATA6, self.FOXA2_prot, self.P2_act_unbinding[0])
+            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6_GATA6, self.Pfoxa2_GATA6, self.GATA6_prot, self.P2_act_unbinding[0])
         )
         self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxf1_GATA6, self.FOXF1_prot, self.Pfoxf1_GATA6_FOXF1, self.P1_act_binding[1])
+            HeterodimerBindingReaction(self.Pfoxf1_GATA6, self.GATA6_prot, self.Pfoxf1_GATA6_GATA6, self.P1_act_binding[1])
         )
         self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6_FOXF1, self.Pfoxf1_GATA6, self.FOXF1_prot, self.P2_act_unbinding[1])
+            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6_GATA6, self.Pfoxf1_GATA6, self.GATA6_prot, self.P2_act_unbinding[1])
         )
 
         ## P2 -> P3
         self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxa2_GATA6_FOXA2, self.FOXA2_prot, self.Pfoxa2_GATA6_FOXA2_FOXA2, self.P2_act_binding[0])
+            HeterodimerBindingReaction(self.Pfoxa2_GATA6_GATA6, self.FOXA2_prot, self.Pfoxa2_GATA6_GATA6_FOXA2, self.P2_act_binding[0])
         )
         self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6_FOXA2_FOXA2, self.Pfoxa2_GATA6_FOXA2, self.FOXA2_prot, self.P3_act_unbinding[0])
+            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6_GATA6_FOXA2, self.Pfoxa2_GATA6_GATA6, self.FOXA2_prot, self.P3_act_unbinding[0])
         )
         self.AddReaction(
-            HeterodimerBindingReaction(self.Pfoxf1_GATA6_FOXF1, self.FOXF1_prot, self.Pfoxf1_GATA6_FOXF1_FOXF1, self.P2_act_binding[1])
+            HeterodimerBindingReaction(self.Pfoxf1_GATA6_GATA6, self.FOXF1_prot, self.Pfoxf1_GATA6_GATA6_FOXF1, self.P2_act_binding[1])
         )
         self.AddReaction(
-            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6_FOXF1_FOXF1, self.Pfoxf1_GATA6_FOXF1, self.FOXF1_prot, self.P3_act_unbinding[1])
+            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6_GATA6_FOXF1, self.Pfoxf1_GATA6_GATA6, self.FOXF1_prot, self.P3_act_unbinding[1])
+        )
+        ## P3 -> P4
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxa2_GATA6_GATA6_FOXA2, self.FOXA2_prot, self.Pfoxa2_GATA6_GATA6_FOXA2_FOXA2, self.P2_act_binding[0])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxa2_GATA6_GATA6_FOXA2_FOXA2, self.Pfoxa2_GATA6_GATA6_FOXA2, self.FOXA2_prot, self.P3_act_unbinding[0])
+        )
+        self.AddReaction(
+            HeterodimerBindingReaction(self.Pfoxf1_GATA6_GATA6_FOXF1, self.FOXF1_prot, self.Pfoxf1_GATA6_GATA6_FOXF1_FOXF1, self.P2_act_binding[1])
+        )
+        self.AddReaction(
+            HeterodimerUnbindingReaction(self.Pfoxf1_GATA6_GATA6_FOXF1_FOXF1, self.Pfoxf1_GATA6_GATA6_FOXF1, self.FOXF1_prot, self.P3_act_unbinding[1])
         )
         self.rates = np.zeros(len(self.reactions))
         for rIndex, r in enumerate(self.reactions):
@@ -279,6 +307,7 @@ def RunDeterministicResponse(GATA6,
                              activated_transcription_rate,
                              double_activated_transcription_rate,
                              triple_activated_transcription_rate,
+                             quad_activated_transcription_rate,
                              inhibited_transcription_rate,
                              P_act_binding,
                              P_inh_binding,
@@ -288,6 +317,8 @@ def RunDeterministicResponse(GATA6,
                              P2_act_unbinding,
                              P2_act_binding,
                              P3_act_unbinding,
+                             P3_act_binding,
+                             P4_act_unbinding,
                              T=10000.,
                              dt=1., 
                              plots=False,
@@ -299,6 +330,7 @@ def RunDeterministicResponse(GATA6,
                                activated_transcription_rate=activated_transcription_rate,
                                double_activated_transcription_rate=double_activated_transcription_rate,
                                triple_activated_transcription_rate=triple_activated_transcription_rate,
+                               quad_activated_transcription_rate=quad_activated_transcription_rate,
                                inhibited_transcription_rate=inhibited_transcription_rate,
                                P_act_binding=P_act_binding,
                                P_inh_binding=P_inh_binding,
@@ -307,7 +339,9 @@ def RunDeterministicResponse(GATA6,
                                P1_act_binding=P1_act_binding,
                                P2_act_unbinding=P2_act_unbinding,
                                P2_act_binding=P2_act_binding,
-                               P3_act_unbinding=P3_act_unbinding)
+                               P3_act_unbinding=P3_act_unbinding,
+                               P3_act_binding=P3_act_binding,
+                               P4_act_unbinding=P4_act_unbinding)
     dts, dtraj = dr.Run(T, dt)
     curvetypes = ['r-', 'g-', 'b-', 'k-', 'm-', 'c-']
     if plots:
@@ -428,23 +462,26 @@ class StochasticResponse (GATA6_response_model):
             return ts, trajectory
 
 def RunStochasticResponse(GATA6, 
-                        activated_transcription_rate,
-                        double_activated_transcription_rate,
-                        triple_activated_transcription_rate,
-                        inhibited_transcription_rate,
-                        P_act_binding,
-                        P_inh_binding,
-                        P1_act_unbinding,
-                        P1_inh_unbinding,
-                        P1_act_binding,
-                        P2_act_unbinding,
-                        P2_act_binding,
-                        P3_act_unbinding,
-                        T=10000.,
-                        dt=1., 
-                        plots=False,
-                        plotPromoter=False,
-                        unocc_transcription_rate=5.0e-08):
+                             activated_transcription_rate,
+                             double_activated_transcription_rate,
+                             triple_activated_transcription_rate,
+                             quad_activated_transcription_rate,
+                             inhibited_transcription_rate,
+                             P_act_binding,
+                             P_inh_binding,
+                             P1_act_unbinding,
+                             P1_inh_unbinding,
+                             P1_act_binding,
+                             P2_act_unbinding,
+                             P2_act_binding,
+                             P3_act_unbinding,
+                             P3_act_binding,
+                             P4_act_unbinding,
+                             T=10000.,
+                             dt=1., 
+                             plots=False,
+                             plotPromoter=False,
+                             unocc_transcription_rate=5.0e-08):
     """RunStochasticRepressilator(tmax, dt, plots=False, plotPromoter=False)
     creates and runs a StochasticRepressilator for the specified time
     interval T, returning the trajectory in time increments dt,
@@ -456,6 +493,7 @@ def RunStochasticResponse(GATA6,
                                activated_transcription_rate=activated_transcription_rate,
                                double_activated_transcription_rate=double_activated_transcription_rate,
                                triple_activated_transcription_rate=triple_activated_transcription_rate,
+                               quad_activated_transcription_rate=quad_activated_transcription_rate,
                                inhibited_transcription_rate=inhibited_transcription_rate,
                                P_act_binding=P_act_binding,
                                P_inh_binding=P_inh_binding,
@@ -464,7 +502,9 @@ def RunStochasticResponse(GATA6,
                                P1_act_binding=P1_act_binding,
                                P2_act_unbinding=P2_act_unbinding,
                                P2_act_binding=P2_act_binding,
-                               P3_act_unbinding=P3_act_unbinding)
+                               P3_act_unbinding=P3_act_unbinding,
+                               P3_act_binding=P3_act_binding,
+                               P4_act_unbinding=P4_act_unbinding)
     sts, straj = sr.Run(T, dt)
     curvetypes = ['r-', 'g-', 'b-', 'k-', 'm-', 'c-']
     if plots:
