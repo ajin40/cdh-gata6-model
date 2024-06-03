@@ -35,6 +35,8 @@ class GATA6_response_model:
                  P3_act_unbinding,
                  P3_act_binding,
                  P4_act_unbinding,
+                 FOXA2_prot=0,
+                 FOXF1_prot=0,
                  mRNA_degradation_rate=np.log(2) / 120.,
                  protein_degradation_rate=np.log(2) / 600.,
                  translation_rate=0.0167,
@@ -73,8 +75,8 @@ class GATA6_response_model:
         self.foxf1_mrna = Chemical(0.0) 
         
         # Proteins
-        self.FOXA2_prot = Chemical(0.0)
-        self.FOXF1_prot = Chemical(0.0)
+        self.FOXA2_prot = Chemical(FOXA2_prot)
+        self.FOXF1_prot = Chemical(FOXF1_prot)
         self.GATA6_prot = Chemical(GATA6)
         # Promoter States
         # Unbound (Default) each promoter has 2 copies. except exogenous gata6 (The synthetic Circuit)
@@ -319,6 +321,8 @@ def RunDeterministicResponse(GATA6,
                              P3_act_unbinding,
                              P3_act_binding,
                              P4_act_unbinding,
+                             FOXA2_prot=0,
+                             FOXF1_prot=0,
                              T=10000.,
                              dt=1., 
                              plots=False,
@@ -326,6 +330,8 @@ def RunDeterministicResponse(GATA6,
                              unocc_transcription_rate=5.0e-08):
 
     dr = DeterministicResponse(GATA6=GATA6,
+                               FOXA2_prot=FOXA2_prot,
+                               FOXF1_prot=FOXF1_prot,
                                unocc_transcription_rate=unocc_transcription_rate,
                                activated_transcription_rate=activated_transcription_rate,
                                double_activated_transcription_rate=double_activated_transcription_rate,
@@ -477,6 +483,8 @@ def RunStochasticResponse(GATA6,
                              P3_act_unbinding,
                              P3_act_binding,
                              P4_act_unbinding,
+                             FOXA2_prot=0,
+                             FOXF1_prot=0,
                              T=10000.,
                              dt=1., 
                              plots=False,
@@ -504,7 +512,9 @@ def RunStochasticResponse(GATA6,
                                P2_act_binding=P2_act_binding,
                                P3_act_unbinding=P3_act_unbinding,
                                P3_act_binding=P3_act_binding,
-                               P4_act_unbinding=P4_act_unbinding)
+                               P4_act_unbinding=P4_act_unbinding,
+                               FOXA2_prot=FOXA2_prot,
+                               FOXF1_prot=FOXF1_prot)
     sts, straj = sr.Run(T, dt)
     curvetypes = ['r-', 'g-', 'b-', 'k-', 'm-', 'c-']
     if plots:
