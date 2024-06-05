@@ -140,6 +140,7 @@ class StochasticCNV():
 
         self.ts = [self.t]
         self.states = [self.state_vector]
+        self.list_rxns = []
         self.update_propensities()
 
     
@@ -228,8 +229,8 @@ class StochasticCNV():
         while self.t < tf:
             if recalculate:
                 self.update_propensities()
-                tau1 = self.noncritical_reactionleap()
                 tau2 = self.critical_reactions_leap()
+                tau1 = self.noncritical_reaction_leap()
                 if tau1 < tau2:
                     self.dt = tau1
                     n_reactions = np.random.poisson(self.reaction_propensities * self.dt).reshape((len(self.reaction_propensities), 1))
@@ -248,6 +249,7 @@ class StochasticCNV():
                 self.state_vector = temp_vector
                 self.ts.append(self.t)
                 self.states.append(self.state_vector)
+                self.list_rxns.append(n_reactions)
                 recalculate=True
             else:
                 recalculate=False
@@ -285,19 +287,27 @@ class StochasticCNV():
         else:
             return ts, states
 
-    def noncritical_reactionleap(self, eps=0.03):
+    def noncritical_reaction_leap(self, eps=0.03):
         max_mu = np.zeros(len(self.state_vector))
         max_sigma = np.zeros(len(self.state_vector))
         for i in range(len(self.state_vector)):
-            # from Cao et al. (2006) g_i is 1 if the highest order reaction is 1, 2 f the highest order reaction is 2,
-            # Unless any reaction requires two molecules, which in this case is never true. 
+                # from Cao et al. (2006) g_i is 1 if the highest order reaction is 1, 2 f the highest order reaction is 2,
+                # Unless any reaction requires two molecules, which in this case is never true. 
             self.g[i] = np.sum(self.reaction_stoichiometries[np.argmin(self.reaction_stoichiometries[:,i]), :] < 0)
-            self.mu[i] = np.sum(self.reaction_stoichiometries[:,i] * self.reaction_propensities)
-            self.sigma[i] = np.sum(np.square(self.reaction_stoichiometries[:,i]) * self.reaction_propensities)
-            max_mu[i] = max(1, eps * self.state_vector[i] / self.g[i]) / abs(self.mu[i])
-            max_sigma[i] = max(1, eps * self.state_vector[i] / self.g[i]) ** 2 / self.sigma[i]
+            self.mu[i] = np.sum(self.reaction_stoichiometries[:,i] * ~self.critical_rxns * self.reaction_propensities)
+            self.sigma[i] = np.sum(np.square(self.reaction_stoichiometries[:,i]) * ~self.critical_rxns * self.reaction_propensities)
+            if self.mu[i] > 0:
+                max_mu[i] = max(1, eps * self.state_vector[i] / self.g[i]) / abs(self.mu[i])
+            else:
+                max_mu[i] = np.inf
+            if self.sigma[i] > 0:
+                max_sigma[i] = max(1, eps * self.state_vector[i] / self.g[i]) ** 2 / self.sigma[i]
+            else:
+                max_sigma[i] = np.inf
         tau = np.amin([max_mu, max_sigma])
         return tau
+    
+    
 
     def identify_critical_reactions(self, nc):
         self.critical_rxns[:] = 0
@@ -319,7 +329,7 @@ class StochasticCNV():
     def critical_reactions_leap(self, nc=10):
         critical_rxns = self.identify_critical_reactions(nc)
         prop_sum = np.sum(self.reaction_propensities[critical_rxns])
-        tau = np.random.exponential(scale=prop_sum)
+        tau = np.random.exponential(scale=1/prop_sum)
         return tau
 
             
