@@ -317,7 +317,7 @@ class StochasticCNV():
                 # skip
                 for i in range(len(self.reaction_stoichiometries[j, :])):
                     if self.reaction_stoichiometries[j, i] < 0:
-                        L_j[j] += self.reaction_stoichiometries[j, i]
+                        L_j[j] += self.reaction_stoichiometries[j, i] * self.reaction_propensities[j]
         L_j_index = np.argsort(L_j)
         for i in range(nc):
             if L_j[L_j_index[i]] >= 0:
